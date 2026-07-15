@@ -1,0 +1,185 @@
+--- src/AttributionReader.php	2026-07-15 12:59:34
++++ reference-solution/src/AttributionReader.php	2026-07-15 13:00:43
+@@ -12,11 +12,35 @@
+     public function fromCheckoutSession(array $session): array
+     {
+         $metadata = $session['metadata'] ?? [];
++        $parsed = $this->parseClientReferenceId($session['client_reference_id'] ?? null);
+ 
+         return [
+-            'source' => (string) ($metadata['source'] ?? 'direct'),
+-            'campaign_id' => isset($metadata['campaign']) ? (string) $metadata['campaign'] : null,
+-            'partner_ref' => isset($metadata['partner_ref']) ? (string) $metadata['partner_ref'] : null,
++            'source' => $this->normalizeSource((string) ($metadata['source'] ?? $parsed['source'] ?? 'direct')),
++            'campaign_id' => isset($metadata['campaign_id'])
++                ? (string) $metadata['campaign_id']
++                : (isset($parsed['campaign_id']) ? (string) $parsed['campaign_id'] : null),
++            'partner_ref' => isset($metadata['partner_ref'])
++                ? (string) $metadata['partner_ref']
++                : (isset($parsed['partner_ref']) ? (string) $parsed['partner_ref'] : null),
+         ];
+     }
++
++    public function normalizeSource(string $source): string
++    {
++        return strtolower($source);
++    }
++
++    /**
++     * @return array<string, mixed>
++     */
++    private function parseClientReferenceId(mixed $clientReferenceId): array
++    {
++        if (!is_string($clientReferenceId) || $clientReferenceId === '') {
++            return [];
++        }
++
++        $decoded = json_decode($clientReferenceId, true);
++
++        return is_array($decoded) ? $decoded : [];
++    }
+ }
+--- src/CheckoutSessionFactory.php	2026-07-15 12:59:34
++++ reference-solution/src/CheckoutSessionFactory.php	2026-07-15 13:00:45
+@@ -14,15 +14,29 @@
+     {
+         $email = strtolower((string) $request['email']);
+         $query = $request['query'] ?? [];
++        $metadata = [
++            'email' => $email,
++            'source' => $query['source'] ?? 'direct',
++        ];
+ 
++        foreach (['campaign_id', 'partner_ref'] as $key) {
++            if (isset($query[$key]) && $query[$key] !== '') {
++                $metadata[$key] = (string) $query[$key];
++            }
++        }
++
++        $clientReferencePayload = array_filter([
++            'source' => $metadata['source'] ?? null,
++            'campaign_id' => $metadata['campaign_id'] ?? null,
++            'partner_ref' => $metadata['partner_ref'] ?? null,
++        ], static fn ($value) => $value !== null && $value !== '');
++
+         return [
+             'session_id' => 'cs_' . substr(sha1($email . json_encode($query)), 0, 12),
+             'customer_email' => $email,
+             'amount' => (int) ($request['amount'] ?? 2900),
+-            'metadata' => [
+-                'email' => $email,
+-                'source' => $query['source'] ?? 'direct',
+-            ],
++            'metadata' => $metadata,
++            'client_reference_id' => json_encode($clientReferencePayload, JSON_THROW_ON_ERROR),
+         ];
+     }
+ }
+--- src/InMemoryStore.php	2026-07-15 12:59:36
++++ reference-solution/src/InMemoryStore.php	2026-07-15 13:00:51
+@@ -110,8 +110,8 @@
+             'subscription_status' => $member['subscription_status'] ?? 'free',
+             'last_payment_id' => $member['last_payment_id'] ?? null,
+             'attribution' => [
+-                'source' => $member['source'] ?? null,
+-                'campaign_id' => $member['campaign'] ?? null,
++                'source' => isset($member['source']) ? strtolower((string) $member['source']) : null,
++                'campaign_id' => $member['campaign_id'] ?? null,
+             ],
+         ];
+     }
+@@ -125,11 +125,6 @@
+ 
+         foreach ($this->conversions as $conversion) {
+             $source = strtolower((string) ($conversion['source'] ?? 'unknown'));
+-
+-            if ($source === 'partner' && empty($conversion['campaign_id'])) {
+-                continue;
+-            }
+-
+             $stats[$source] ??= ['paid_members' => 0, 'mrr' => 0];
+             $stats[$source]['paid_members']++;
+             $stats[$source]['mrr'] += (int) ($conversion['amount'] ?? 0);
+--- src/WebhookProcessor.php	2026-07-15 12:59:35
++++ reference-solution/src/WebhookProcessor.php	2026-07-15 13:00:48
+@@ -26,10 +26,6 @@
+             return;
+         }
+ 
+-        if ($replayId !== '') {
+-            $this->store->markReplayProcessed($replayId);
+-        }
+-
+         $session = $event['data']['object'] ?? [];
+         $metadata = $session['metadata'] ?? [];
+         $email = strtolower((string) ($metadata['email'] ?? $session['customer_email'] ?? ''));
+@@ -45,6 +41,7 @@
+         $partnerRef = $attribution['partner_ref'];
+         $paymentId = (string) ($session['payment_intent'] ?? $session['id'] ?? $replayId);
+         $amount = (int) ($session['amount_total'] ?? 0);
++        $conversionKey = 'conversion:payment:' . $paymentId;
+ 
+         $this->store->savePayment([
+             'payment_id' => $paymentId,
+@@ -64,18 +61,31 @@
+             'partner_ref' => $partnerRef,
+         ]);
+ 
+-        $idempotencyKey = 'conversion:' . $email;
++        if ($this->store->hasConversion($conversionKey)) {
++            $existing = $this->store->findConversion($conversionKey);
+ 
+-        if ($this->store->hasConversion($idempotencyKey)) {
++            if ($existing !== null && $this->shouldEnrichAttribution($existing, $attribution)) {
++                $this->store->saveConversion($conversionKey, array_replace($existing, [
++                    'source' => $source,
++                    'campaign_id' => $campaignId,
++                    'partner_ref' => $partnerRef,
++                ]));
++            }
++
+             $this->store->log('warning', 'duplicate conversion suppressed', [
+                 'event_id' => $replayId,
+                 'email' => $email,
+                 'payment_id' => $paymentId,
+             ]);
++
++            if ($replayId !== '') {
++                $this->store->markReplayProcessed($replayId);
++            }
++
+             return;
+         }
+ 
+-        $this->store->saveConversion($idempotencyKey, [
++        $this->store->saveConversion($conversionKey, [
+             'email' => $email,
+             'payment_id' => $paymentId,
+             'amount' => $amount,
+@@ -83,5 +93,26 @@
+             'campaign_id' => $campaignId,
+             'partner_ref' => $partnerRef,
+         ]);
++
++        if ($replayId !== '') {
++            $this->store->markReplayProcessed($replayId);
++        }
+     }
++
++    /**
++     * @param array<string, mixed> $existing
++     * @param array{source: string, campaign_id: ?string, partner_ref: ?string} $incoming
++     */
++    private function shouldEnrichAttribution(array $existing, array $incoming): bool
++    {
++        if (($existing['campaign_id'] ?? null) === null && ($incoming['campaign_id'] ?? null) !== null) {
++            return true;
++        }
++
++        if (($existing['partner_ref'] ?? null) === null && ($incoming['partner_ref'] ?? null) !== null) {
++            return true;
++        }
++
++        return false;
++    }
+ }

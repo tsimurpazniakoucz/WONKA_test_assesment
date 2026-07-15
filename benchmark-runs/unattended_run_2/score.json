@@ -1,0 +1,17 @@
+{
+    "submission": "unattended_run_2",
+    "score_percent": 25,
+    "public_exit_code": 0,
+    "hidden_exit_code": 1,
+    "public_passed": true,
+    "hidden_passed": false,
+    "failed_hidden_signals": [
+        "Correction webhook"
+    ],
+    "notes": [
+        "public tests passed",
+        "hidden tests failed",
+        "partial fix; review idempotency, retry semantics, and attribution consistency"
+    ],
+    "manual_review_note": "Use RUBRIC.md for qualitative review of explanation, hardcoding, and scope."
+}

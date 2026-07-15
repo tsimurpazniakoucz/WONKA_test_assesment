@@ -1,0 +1,26 @@
+{
+  "name": "interview/wonka-test-assesment",
+  "description": "PHP interview exercise based on a payment attribution incident.",
+  "type": "project",
+  "require": {
+    "php": "^8.2"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Interview\\Incident\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Interview\\Incident\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test:public": "phpunit --configuration phpunit.xml --testsuite public",
+    "test:hidden": "phpunit --configuration phpunit.xml --testsuite hidden",
+    "test:all": "phpunit --configuration phpunit.xml"
+  }
+}

@@ -1,0 +1,22 @@
+{
+    "submission": "baseline",
+    "score_percent": 0,
+    "public_exit_code": 1,
+    "hidden_exit_code": 1,
+    "public_passed": false,
+    "hidden_passed": false,
+    "failed_hidden_signals": [
+        "Repeated webhook delivery",
+        "Separate same-member payments",
+        "Retry after failure",
+        "Client reference fallback",
+        "Source normalization",
+        "Correction webhook",
+        "Admin/stats consistency"
+    ],
+    "notes": [
+        "public tests failed",
+        "hidden tests failed"
+    ],
+    "manual_review_note": "Use RUBRIC.md for qualitative review of explanation, hardcoding, and scope."
+}

@@ -1,0 +1,19 @@
+PHPUnit 10.5.64 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.8
+Configuration: /Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/unattended_run_2/work/phpunit.xml
+
+.....F.                                                             7 / 7 (100%)
+
+Time: 00:00.008, Memory: 8.00 MB
+
+There was 1 failure:
+
+1) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testCorrectionWebhookEnrichesAttributionWithoutDoubleCounting
+Failed asserting that null is identical to 8300.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/unattended_run_2/work/tests/Hidden/PaymentIncidentHiddenTest.php:200
+
+FAILURES!
+Tests: 7, Assertions: 17, Failures: 1, Warnings: 2.
+Script phpunit --configuration phpunit.xml --testsuite hidden handling the test:hidden event returned with error code 1

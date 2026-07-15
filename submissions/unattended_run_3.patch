@@ -1,0 +1,185 @@
+--- src/AttributionReader.php	2026-07-15 12:59:34
++++ /var/folders/kj/x905xbnd2h91gm6_l0l81hq00000gn/T/tmp4_fdzifj	2026-07-15 13:02:01
+@@ -6,17 +6,45 @@
+ 
+ final class AttributionReader
+ {
+-    /**
+-     * @return array{source: string, campaign_id: ?string, partner_ref: ?string}
+-     */
+     public function fromCheckoutSession(array $session): array
+     {
+         $metadata = $session['metadata'] ?? [];
++        $reference = $this->fromClientReferenceId(
++            isset($session['client_reference_id']) ? (string) $session['client_reference_id'] : null
++        );
+ 
++        $source = (string) ($metadata['source'] ?? $reference['source'] ?? 'direct');
++        $campaignId = isset($metadata['campaign_id'])
++            ? (string) $metadata['campaign_id']
++            : (isset($metadata['campaign'])
++                ? (string) $metadata['campaign']
++                : $reference['campaign_id']);
++        $partnerRef = isset($metadata['partner_ref'])
++            ? (string) $metadata['partner_ref']
++            : $reference['partner_ref'];
++
+         return [
+-            'source' => (string) ($metadata['source'] ?? 'direct'),
+-            'campaign_id' => isset($metadata['campaign']) ? (string) $metadata['campaign'] : null,
+-            'partner_ref' => isset($metadata['partner_ref']) ? (string) $metadata['partner_ref'] : null,
++            'source' => ,
++            'campaign_id' => $campaignId,
++            'partner_ref' => $partnerRef,
+         ];
+     }
++
++    private function fromClientReferenceId(?string $clientReferenceId): array
++    {
++        if ($clientReferenceId === null || $clientReferenceId === '') {
++            return ['source' => 'direct', 'campaign_id' => null, 'partner_ref' => null];
++        }
++
++        $decoded = json_decode($clientReferenceId, true);
++        if (!is_array($decoded)) {
++            return ['source' => 'direct', 'campaign_id' => null, 'partner_ref' => null];
++        }
++
++        return [
++            'source' => strtolower((string) ($decoded['source'] ?? 'direct')),
++            'campaign_id' => isset($decoded['campaign_id']) ? (string) $decoded['campaign_id'] : null,
++            'partner_ref' => isset($decoded['partner_ref']) ? (string) $decoded['partner_ref'] : null,
++        ];
++    }
+ }
+--- src/CheckoutSessionFactory.php	2026-07-15 12:59:34
++++ /var/folders/kj/x905xbnd2h91gm6_l0l81hq00000gn/T/tmpkg8jgu0g	2026-07-15 13:02:01
+@@ -6,23 +6,27 @@
+ 
+ final class CheckoutSessionFactory
+ {
+-    /**
+-     * @param array<string, mixed> $request
+-     * @return array<string, mixed>
+-     */
+     public function create(array $request): array
+     {
+         $email = strtolower((string) $request['email']);
+         $query = $request['query'] ?? [];
+-
++        $source = (string) ($query['source'] ?? 'direct');
++        $campaignId = isset($query['campaign_id']) ? (string) $query['campaign_id'] : null;
++        $partnerRef = isset($query['partner_ref']) ? (string) $query['partner_ref'] : null;
++        $metadata = ['email' => $email, 'source' => $source];
++        if ($campaignId !== null) { $metadata['campaign_id'] = $campaignId; }
++        if ($partnerRef !== null) { $metadata['partner_ref'] = $partnerRef; }
++        $clientReference = array_filter([
++            'source' => $source,
++            'campaign_id' => $campaignId,
++            'partner_ref' => $partnerRef,
++        ], static fn ($value) => $value !== null && $value !== '');
+         return [
+             'session_id' => 'cs_' . substr(sha1($email . json_encode($query)), 0, 12),
+             'customer_email' => $email,
+             'amount' => (int) ($request['amount'] ?? 2900),
+-            'metadata' => [
+-                'email' => $email,
+-                'source' => $query['source'] ?? 'direct',
+-            ],
++            'metadata' => $metadata,
++            'client_reference_id' => json_encode($clientReference, JSON_THROW_ON_ERROR),
+         ];
+     }
+ }
+--- src/WebhookProcessor.php	2026-07-15 12:59:35
++++ /var/folders/kj/x905xbnd2h91gm6_l0l81hq00000gn/T/tmp686u0is7	2026-07-15 13:02:01
+@@ -14,47 +14,24 @@
+     ) {
+     }
+ 
+-    /**
+-     * @param array<string, mixed> $event
+-     */
+     public function processCheckoutCompleted(array $event): void
+     {
+         $replayId = (string) ($event['id'] ?? '');
+-
+         if ($replayId !== '' && $this->store->isReplayProcessed($replayId)) {
+-            $this->store->log('info', 'replay event skipped', ['event_id' => $replayId]);
+             return;
+         }
+-
+-        if ($replayId !== '') {
+-            $this->store->markReplayProcessed($replayId);
+-        }
+-
+         $session = $event['data']['object'] ?? [];
+         $metadata = $session['metadata'] ?? [];
+         $email = strtolower((string) ($metadata['email'] ?? $session['customer_email'] ?? ''));
+-
+         if ($email === '') {
+-            $this->store->log('error', 'checkout webhook missing customer email', ['event_id' => $replayId]);
+             throw new RuntimeException('Missing customer email');
+         }
+-
+         $attribution = $this->attributionReader->fromCheckoutSession($session);
+         $source = $attribution['source'];
+         $campaignId = $attribution['campaign_id'];
+         $partnerRef = $attribution['partner_ref'];
+         $paymentId = (string) ($session['payment_intent'] ?? $session['id'] ?? $replayId);
+         $amount = (int) ($session['amount_total'] ?? 0);
+-
+-        $this->store->savePayment([
+-            'payment_id' => $paymentId,
+-            'email' => $email,
+-            'amount' => $amount,
+-            'source' => $source,
+-            'campaign_id' => $campaignId,
+-            'partner_ref' => $partnerRef,
+-        ]);
+-
+         $this->store->upsertMember([
+             'email' => $email,
+             'subscription_status' => 'paid',
+@@ -63,19 +40,12 @@
+             'campaign_id' => $campaignId,
+             'partner_ref' => $partnerRef,
+         ]);
+-
+-        $idempotencyKey = 'conversion:' . $email;
+-
+-        if ($this->store->hasConversion($idempotencyKey)) {
+-            $this->store->log('warning', 'duplicate conversion suppressed', [
+-                'event_id' => $replayId,
+-                'email' => $email,
+-                'payment_id' => $paymentId,
+-            ]);
++        $key = 'conversion:' . $paymentId;
++        if ($this->store->hasConversion($key)) {
++            if ($replayId !== '') { $this->store->markReplayProcessed($replayId); }
+             return;
+         }
+-
+-        $this->store->saveConversion($idempotencyKey, [
++        $this->store->saveConversion($key, [
+             'email' => $email,
+             'payment_id' => $paymentId,
+             'amount' => $amount,
+@@ -83,5 +53,6 @@
+             'campaign_id' => $campaignId,
+             'partner_ref' => $partnerRef,
+         ]);
++        if ($replayId !== '') { $this->store->markReplayProcessed($replayId); }
+     }
+ }
+--- src/InMemoryStore.php	2026-07-15 12:59:36
++++ /var/folders/kj/x905xbnd2h91gm6_l0l81hq00000gn/T/tmp4la4owtv	2026-07-15 13:02:01
+@@ -111,7 +111,7 @@
+             'last_payment_id' => $member['last_payment_id'] ?? null,
+             'attribution' => [
+                 'source' => $member['source'] ?? null,
+-                'campaign_id' => $member['campaign'] ?? null,
++                'campaign_id' => $member['campaign_id'] ?? $member['campaign'] ?? null,
+             ],
+         ];
+     }

@@ -1,0 +1,183 @@
+Payment Attribution Incident
+
+THE QUESTION
+
+"Create a test assignment for a PHP developer that cannot be solved by AI.
+How would you verify it?"
+
+
+MY ANSWER IN SHORT
+
+I would not try to ban AI. That is hard to enforce and not how people work.
+
+Instead, I built a task where a copied answer or a shallow patch is not enough.
+The candidate still has to run the code, trace a real payment flow, fix several
+related issues, and explain the result on a call.
+
+So the rule is not "no AI". The rule is "you cannot pass with a shallow or
+unattended solution".
+
+
+WHAT THE CANDIDATE GETS
+
+A small PHP 8.2 project with a realistic payment bug.
+
+The scenario: after a recent integration change, some partner signups show up as
+paid in admin, but partner revenue in reporting stays at zero or does not add up.
+
+The candidate receives:
+  CANDIDATE_TASK.md
+  composer.json
+  phpunit.xml
+  src/
+  tests/Public/
+
+They run:
+  composer install
+  composer test:public
+
+and send back a patch plus a short SOLUTION.md.
+
+
+WHAT STAYS ON OUR SIDE
+
+  tests/Hidden/
+  RUBRIC.md
+  EVALUATOR_GUIDE.md
+  reference-solution/
+  benchmarks/
+  benchmark-runs/
+  submissions/
+
+
+WHY THIS WORKS
+
+The public test only shows a symptom:
+
+  testPartnerPaidSignupDoesNotIncreasePartnerRevenue
+  Failed asserting that 0 is identical to 6900.
+
+It does not tell the candidate exactly which field or file to change.
+
+Most shallow fixes get the public test green by patching metadata in one or two
+places. Hidden tests then check the parts people usually miss:
+
+  - duplicate webhook delivery
+  - separate payments for the same user
+  - retry after malformed webhook processing
+  - attribution recovery from client_reference_id
+  - source normalization between admin and stats
+  - correction webhook enrichment without double-counting MRR
+  - consistency across admin, conversions, and stats
+
+
+HOW I VERIFY IT
+
+1. Automated runs in a clean copy of the repo
+2. Hidden tests the candidate never saw
+3. A short technical call if the patch looks reasonable
+
+Score split:
+  public tests  25%
+  hidden tests  65%
+  full pass     10%
+
+
+BENCHMARK RESULTS
+
+Run                 Public   Hidden   Score
+---------------------------------------------
+baseline            fail     fail     0%
+reference           pass     pass     100%
+unattended_run_1    pass     fail     25%
+unattended_run_2    pass     fail     25%
+unattended_run_3    pass     fail     25%
+
+Target:
+  baseline around 0%
+  reference around 100%
+  unattended runs below 50%
+
+That is what we got.
+
+The first version of this task was too easy. I tightened it. These numbers are
+from the updated version.
+
+
+SAMPLE TEST OUTPUT
+
+Baseline, public:
+
+  .F  2 / 2
+
+  PaymentIncidentPublicTest::testPartnerPaidSignupDoesNotIncreasePartnerRevenue
+  Failed asserting that 0 is identical to 6900.
+
+
+Reference solution, public:
+
+  ..  2 / 2
+  OK (2 tests, 6 assertions)
+
+
+Reference solution, hidden:
+
+  .......  7 / 7
+  OK (7 tests, 18 assertions)
+
+
+Best unattended run, hidden:
+
+  .....F.  7 / 7
+
+  PaymentIncidentHiddenTest::testCorrectionWebhookEnrichesAttributionWithoutDoubleCounting
+  Failed asserting that null is identical to 8300.
+
+
+WHERE UNATTENDED RUNS FAILED
+
+unattended_run_1  source normalization, correction webhook
+unattended_run_2  correction webhook only (6/7 hidden tests passed)
+unattended_run_3  source normalization, correction webhook
+
+
+WHY THIS MATCHES THE BRIEF
+
+You asked for:
+  1. a PHP test task that AI cannot solve on its own
+  2. a clear way to verify it
+
+My interpretation:
+  - unattended or shallow solutions should not pass full evaluation
+  - a strong developer still can pass, even with normal tooling
+  - you get something concrete before scheduling a call
+
+This is more useful than a CRUD exercise because you end up with a real diff,
+an objective score, and a focused interview topic.
+
+
+WHAT IS IN THE PACKAGE
+
+WONKA_test_assesment/
+  README.md
+  CANDIDATE_TASK.md
+  EVALUATOR_GUIDE.md
+  RUBRIC.md
+  src/
+  tests/
+  benchmarks/
+  reference-solution/
+  benchmark-runs/
+  submissions/
+  SUBMISSION.txt
+
+
+BOTTOM LINE
+
+I would use this before the interview call.
+
+The baseline is broken on purpose. The reference fix passes. Unattended partial
+fixes do not.
+
+That gives a better filter than resume comparison alone, and a much better
+starting point for the conversation.

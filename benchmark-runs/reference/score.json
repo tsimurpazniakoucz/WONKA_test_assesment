@@ -1,0 +1,15 @@
+{
+    "submission": "reference",
+    "score_percent": 100,
+    "public_exit_code": 0,
+    "hidden_exit_code": 0,
+    "public_passed": true,
+    "hidden_passed": true,
+    "failed_hidden_signals": [],
+    "notes": [
+        "public tests passed",
+        "hidden tests passed",
+        "full automated behavior appears correct"
+    ],
+    "manual_review_note": "Use RUBRIC.md for qualitative review of explanation, hardcoding, and scope."
+}

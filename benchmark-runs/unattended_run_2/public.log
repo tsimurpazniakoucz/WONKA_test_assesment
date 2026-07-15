@@ -1,0 +1,10 @@
+PHPUnit 10.5.64 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.8
+Configuration: /Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/unattended_run_2/work/phpunit.xml
+
+..                                                                  2 / 2 (100%)
+
+Time: 00:00.007, Memory: 8.00 MB
+
+OK (2 tests, 6 assertions)

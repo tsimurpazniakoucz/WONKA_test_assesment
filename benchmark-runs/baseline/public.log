@@ -1,0 +1,19 @@
+PHPUnit 10.5.64 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.8
+Configuration: /Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/phpunit.xml
+
+.F                                                                  2 / 2 (100%)
+
+Time: 00:00.004, Memory: 8.00 MB
+
+There was 1 failure:
+
+1) Interview\Incident\Tests\Public\PaymentIncidentPublicTest::testPartnerPaidSignupDoesNotIncreasePartnerRevenue
+Failed asserting that 0 is identical to 6900.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Public/PaymentIncidentPublicTest.php:58
+
+FAILURES!
+Tests: 2, Assertions: 6, Failures: 1.
+Script phpunit --configuration phpunit.xml --testsuite public handling the test:public event returned with error code 1

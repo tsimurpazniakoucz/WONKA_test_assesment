@@ -1,0 +1,54 @@
+PHPUnit 10.5.64 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.8
+Configuration: /Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/phpunit.xml
+
+FFFFFFF                                                             7 / 7 (100%)
+
+Time: 00:00.005, Memory: 8.00 MB
+
+There were 7 failures:
+
+1) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testRepeatedWebhookDeliveryIsIdempotentWithoutDoubleCounting
+Failed asserting that null is identical to 9900.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:33
+
+2) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testDifferentPaymentsForSameMemberAreSeparateConversions
+Failed asserting that actual size 1 matches expected size 2.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:58
+
+3) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testReplayEventStaysRetryableAfterFailedWebhookWrite
+Failed asserting that true is false.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:86
+
+4) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testAttributionRecoveredFromClientReferenceIdFallback
+Failed asserting that null is identical to 'client-ref-campaign'.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:130
+
+5) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testSourceNormalizationMatchesBetweenAdminAndStats
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'partner'
++'Partner'
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:153
+
+6) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testCorrectionWebhookEnrichesAttributionWithoutDoubleCounting
+Failed asserting that null is identical to 8300.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:200
+
+7) Interview\Incident\Tests\Hidden\PaymentIncidentHiddenTest::testStatsAndAdminUseSameCampaignAttributionFromFullScenario
+Failed asserting that null is identical to 'stats-campaign'.
+
+/Users/user/Documents/Engineering/testtask/WONKA_test_assesment/benchmark-runs/baseline/work/tests/Hidden/PaymentIncidentHiddenTest.php:225
+
+FAILURES!
+Tests: 7, Assertions: 9, Failures: 7, Warnings: 4.
+Script phpunit --configuration phpunit.xml --testsuite hidden handling the test:hidden event returned with error code 1
