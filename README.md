@@ -4,6 +4,8 @@ Interview exercise for a PHP developer. The package includes the candidate task,
 
 **Full write-up:** see [`SUBMISSION.md`](SUBMISSION.md) for the complete assignment description, benchmark results, AI-resistance rationale, detection signals, and reference solution walkthrough.
 
+**Scope note:** this is a compact, general-purpose example of the evaluation approach — not a model-specific benchmark hardened to defeat current top-tier AI on every run. See the [Scope and Honest Limits](SUBMISSION.md#scope-and-honest-limits) section in `SUBMISSION.md`.
+
 ## Layout
 
 ```text

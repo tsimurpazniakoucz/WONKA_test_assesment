@@ -2,6 +2,18 @@
 
 ---
 
+## Scope and Honest Limits
+
+Today's AI tools already cover a large portion of routine and mid-complexity coding work. Performance improves further when a task is shaped around a specific model, prompt flow, and runtime setup. This repository stays deliberately general — it is not tuned to one model family or one prompting recipe.
+
+If the requirement is "top models should fail consistently," that is a separate engineering effort. In practice it usually means many hardening passes, repeated benchmark runs across models, and weeks of iteration before results stop moving. We did not chase that maximum-hardness bar here, mainly because of the time available.
+
+This package is intentionally compact: a broken baseline, public and hidden tests, a scoring harness, a reference fix, and recorded benchmark runs. With enough targeted iteration, a strong AI-assisted workflow could still produce a passing solution. Under a stricter brief, the same approach could be scaled into a larger, more layered codebase — and even then, sustained model-specific tuning might eventually clear it.
+
+That limitation is acceptable for this deliverable. The goal is to show the evaluation concept and a working implementation path end to end — how to frame the task, separate shallow fixes from complete ones, score submissions, and use the result in a real hiring loop.
+
+---
+
 ## The Question
 
 > Create a test assignment for a PHP developer that cannot be solved by AI.  
